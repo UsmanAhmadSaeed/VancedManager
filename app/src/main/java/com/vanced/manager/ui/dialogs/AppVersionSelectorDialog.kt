@@ -11,12 +11,14 @@ import com.vanced.manager.core.ui.base.BindingBottomSheetDialogFragment
 import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.DialogBottomRadioButtonBinding
 import com.vanced.manager.ui.core.ThemedMaterialRadioButton
-import com.vanced.manager.utils.Extensions.getCheckedButtonTag
-import com.vanced.manager.utils.Extensions.getDefaultPrefs
+import com.vanced.manager.utils.checkedButtonTag
+import com.vanced.manager.utils.defPrefs
+import com.vanced.manager.utils.formatVersion
 
-class AppVersionSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomRadioButtonBinding>() {
+class AppVersionSelectorDialog :
+    BindingBottomSheetDialogFragment<DialogBottomRadioButtonBinding>() {
 
-    private val prefs by lazy { requireActivity().getDefaultPrefs() }
+    private val prefs by lazy { requireActivity().defPrefs }
 
     companion object {
 
@@ -63,7 +65,7 @@ class AppVersionSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomRa
             }
             dialogTitle.text = getString(R.string.version)
             dialogSave.setOnClickListener {
-                val checkedTag = dialogRadiogroup.getCheckedButtonTag()
+                val checkedTag = dialogRadiogroup.checkedButtonTag
                 if (checkedTag != null) {
                     prefs.edit { putString("${arguments?.getString(TAG_APP)}_version", checkedTag) }
                 }
@@ -75,7 +77,7 @@ class AppVersionSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomRa
     private fun loadBoxes() =
         arguments?.getStringArrayList(TAG_VERSIONS)?.map { version ->
             ThemedMaterialRadioButton(requireActivity()).apply {
-                text = version
+                text = version.formatVersion(requireActivity())
                 tag = version
                 textSize = 18f
             }

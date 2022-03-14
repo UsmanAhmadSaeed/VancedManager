@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.vanced.manager.R
 import com.vanced.manager.databinding.ViewAppCheckboxBinding
 import com.vanced.manager.model.SelectAppModel
+import com.vanced.manager.utils.enableMusic
+import com.vanced.manager.utils.enableVanced
 
 class SelectAppsAdapter(private val context: Context) :
     RecyclerView.Adapter<SelectAppsAdapter.SelectAppsViewHolder>() {
@@ -16,21 +18,22 @@ class SelectAppsAdapter(private val context: Context) :
 
     private val vanced = SelectAppModel(
         context.getString(R.string.vanced),
-        context.getString(R.string.select_apps_vanced),
+        context.getString(R.string.description_vanced),
         "vanced",
-        prefs.getBoolean("enable_vanced", true)
+        prefs.enableVanced
     )
 
     private val music = SelectAppModel(
         context.getString(R.string.music),
-        context.getString(R.string.select_apps_music),
+        context.getString(R.string.description_vanced_music),
         "music",
-        prefs.getBoolean("enable_music", true)
+        prefs.enableMusic
     )
 
     val apps = arrayOf(vanced, music)
 
-    inner class SelectAppsViewHolder(binding: ViewAppCheckboxBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class SelectAppsViewHolder(binding: ViewAppCheckboxBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         val appName = binding.appCheckboxText
         val appDescription = binding.appCheckboxDescription
         val appCard = binding.appCheckboxBg

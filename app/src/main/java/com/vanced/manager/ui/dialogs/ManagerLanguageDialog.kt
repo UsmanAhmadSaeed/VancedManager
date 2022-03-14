@@ -5,14 +5,14 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import androidx.core.content.edit
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.vanced.manager.BuildConfig.MANAGER_LANGUAGES
 import com.vanced.manager.core.ui.base.BindingBottomSheetDialogFragment
 import com.vanced.manager.databinding.DialogManagerLanguageBinding
 import com.vanced.manager.ui.core.ThemedMaterialRadioButton
-import com.vanced.manager.utils.Extensions.getCheckedButtonTag
-import com.vanced.manager.utils.LanguageHelper.getLanguageFormat
+import com.vanced.manager.utils.checkedButtonTag
+import com.vanced.manager.utils.getLanguageFormat
+import com.vanced.manager.utils.managerLang
 
 class ManagerLanguageDialog : BindingBottomSheetDialogFragment<DialogManagerLanguageBinding>() {
 
@@ -40,12 +40,12 @@ class ManagerLanguageDialog : BindingBottomSheetDialogFragment<DialogManagerLang
             addRadioButtons().forEach { mrb ->
                 languageRadiogroup.addView(mrb, MATCH_PARENT, WRAP_CONTENT)
             }
-            val language = prefs.getString("manager_lang", "System Default")
-            root.findViewWithTag<ThemedMaterialRadioButton>(language).isChecked = true
+            val language = prefs.managerLang
+            root.findViewWithTag<ThemedMaterialRadioButton>(language)?.isChecked = true
             languageSave.setOnClickListener {
-                val newPref = binding.languageRadiogroup.getCheckedButtonTag()
+                val newPref = binding.languageRadiogroup.checkedButtonTag
                 if (language != newPref) {
-                    prefs.edit { putString("manager_lang", newPref) }
+                    prefs.managerLang = newPref
                     dismiss()
                     requireActivity().recreate()
                 } else {

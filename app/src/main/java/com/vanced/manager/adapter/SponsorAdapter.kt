@@ -9,15 +9,19 @@ import com.vanced.manager.R
 import com.vanced.manager.databinding.ViewSponsorBinding
 import com.vanced.manager.model.SponsorModel
 import com.vanced.manager.ui.viewmodels.HomeViewModel
+import com.vanced.manager.utils.LIGHT
+import com.vanced.manager.utils.currentTheme
 
 class SponsorAdapter(
     private val context: Context,
-    private val viewModel: HomeViewModel,
-    //private val json: ObservableField<JsonObject?>
+    private val viewModel: HomeViewModel
 ) : RecyclerView.Adapter<SponsorAdapter.LinkViewHolder>() {
 
     private val brave = SponsorModel(
-        AppCompatResources.getDrawable(context, R.drawable.ic_brave),
+        if (currentTheme == LIGHT) AppCompatResources.getDrawable(
+            context,
+            R.drawable.ic_brave_light
+        ) else AppCompatResources.getDrawable(context, R.drawable.ic_brave),
         "Brave",
         BRAVE
     )
@@ -38,7 +42,7 @@ class SponsorAdapter(
             with(binding) {
                 sponsorName.text = sponsors[position].name
                 cardSponsor.setOnClickListener {
-                    viewModel.openUrl(sponsors[position].url)
+                    viewModel.openUrl(context, sponsors[position].url)
                 }
             }
         }
@@ -55,26 +59,6 @@ class SponsorAdapter(
     }
 
     override fun getItemCount(): Int = 2
-
-//    fun getCountryFromIP(ipAddress: String?): String? {
-//        val db = context.assets.open("GeoLite2-Country.mmdb")
-//        val reader = DatabaseReader.Builder(db).build()
-//        val inetIp = InetAddress.getByName(ipAddress)
-//        return reader.country(inetIp).country.isoCode
-//    }
-//
-//    init {
-//        json.addOnPropertyChangedCallback(object : Observable.OnPropertyChangedCallback() {
-//            override fun onPropertyChanged(sender: Observable?, propertyId: Int) {
-//                val wm = context.applicationContext.getSystemService(WIFI_SERVICE) as WifiManager?
-//                val ip: String = formatIpAddress(wm!!.connectionInfo.ipAddress)
-//                val promotedTiers = json.get()?.array<String>("tier2")?.value!! + json.get()?.array<String>("tier3")?.value!!
-//                if (promotedTiers.any { getCountryFromIP(ip)?.contains(it)!! })
-//                    sponsors.removeAt(1)
-//            }
-//
-//        })
-//    }
 
     companion object {
         const val BRAVE = "https://vancedapp.com/brave"

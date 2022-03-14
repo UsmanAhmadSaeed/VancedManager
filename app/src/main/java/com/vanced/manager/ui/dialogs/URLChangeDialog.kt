@@ -6,16 +6,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.vanced.manager.core.ui.base.BindingDialogFragment
 import com.vanced.manager.databinding.DialogCustomUrlBinding
-import com.vanced.manager.utils.InternetTools.baseUrl
-import com.vanced.manager.utils.InternetTools.loadJson
+import com.vanced.manager.utils.*
 import kotlinx.coroutines.launch
 
 class URLChangeDialog : BindingDialogFragment<DialogCustomUrlBinding>() {
+
+    private val prefs by lazy { requireActivity().defPrefs }
 
     companion object {
 
@@ -41,16 +40,17 @@ class URLChangeDialog : BindingDialogFragment<DialogCustomUrlBinding>() {
                 if (arguments != null) {
                     arguments?.getString("url")
                 } else {
-                    getDefaultSharedPreferences(requireActivity()).getString("install_url", baseUrl)
+                    prefs.installUrl
                 },
                 TextView.BufferType.EDITABLE
             )
             urlSave.setOnClickListener {
-                val finalUrl = if (urlInput.text?.startsWith("https://") == true || urlInput.text?.startsWith("http://") == true) {
-                    urlInput.text?.removeSuffix("/").toString()
-                } else {
-                    "https://${urlInput.text}".removeSuffix("/")
-                }
+                val finalUrl =
+                    if (urlInput.text?.startsWith("https://") == true || urlInput.text?.startsWith("http://") == true) {
+                        urlInput.text?.removeSuffix("/").toString()
+                    } else {
+                        "https://${urlInput.text}".removeSuffix("/")
+                    }
                 saveUrl(finalUrl)
             }
             urlReset.setOnClickListener { saveUrl(baseUrl) }
@@ -59,7 +59,8 @@ class URLChangeDialog : BindingDialogFragment<DialogCustomUrlBinding>() {
 
     private fun saveUrl(url: String) {
         lifecycleScope.launch {
-            getDefaultSharedPreferences(requireActivity()).edit { putString("install_url", url) }
+            prefs.installUrl = url
+            baseInstallUrl = url
             loadJson(requireActivity())
             dismiss()
         }

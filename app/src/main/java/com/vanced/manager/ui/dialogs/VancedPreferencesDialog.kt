@@ -1,19 +1,13 @@
 package com.vanced.manager.ui.dialogs
 
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.content.edit
 import com.vanced.manager.R
 import com.vanced.manager.core.ui.base.BindingBottomSheetDialogFragment
 import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.DialogVancedPreferencesBinding
-import com.vanced.manager.utils.Extensions.convertToAppTheme
-import com.vanced.manager.utils.Extensions.convertToAppVersions
-import com.vanced.manager.utils.Extensions.getDefaultPrefs
-import com.vanced.manager.utils.InternetTools.vancedVersions
-import com.vanced.manager.utils.LanguageHelper.getDefaultVancedLanguages
+import com.vanced.manager.utils.*
 import java.util.*
 
 class VancedPreferencesDialog : BindingBottomSheetDialogFragment<DialogVancedPreferencesBinding>() {
@@ -25,8 +19,8 @@ class VancedPreferencesDialog : BindingBottomSheetDialogFragment<DialogVancedPre
         }
     }
 
-    private val defPrefs by lazy { requireActivity().getDefaultPrefs() }
-    private val installPrefs by lazy { requireActivity().getSharedPreferences("installPrefs", Context.MODE_PRIVATE) }
+    private val defPrefs by lazy { requireActivity().defPrefs }
+    private val installPrefs by lazy { requireActivity().installPrefs }
 
     override fun binding(
         inflater: LayoutInflater,
@@ -41,20 +35,27 @@ class VancedPreferencesDialog : BindingBottomSheetDialogFragment<DialogVancedPre
     private fun bindData() {
         with(binding) {
             val showLang = mutableListOf<String>()
-            installPrefs.getString("lang", getDefaultVancedLanguages())?.split(", ")?.toTypedArray()?.forEach { lang ->
+            installPrefs.lang?.split(", ")?.forEach { lang ->
                 val loc = Locale(lang)
                 showLang.add(loc.getDisplayLanguage(loc).capitalize(Locale.ROOT))
             }
-            val vancedVersionsConv = vancedVersions.value?.value?.reversed()?.convertToAppVersions()
-            vancedInstallTitle.text = getString(R.string.app_installation_preferences, getString(R.string.vanced))
-            vancedTheme.text = getString(R.string.chosen_theme, installPrefs.getString("theme", "dark")?.convertToAppTheme(requireActivity()))
-            vancedVersion.text = getString(R.string.chosen_version, defPrefs.getString("vanced_version", "latest"))
+            val vancedVersionsConv = vancedVersions.value?.value?.convertToAppVersions()
+            vancedInstallTitle.text =
+                getString(R.string.app_installation_preferences, getString(R.string.vanced))
+            vancedTheme.text = getString(
+                R.string.chosen_theme,
+                installPrefs.theme?.convertToAppTheme(requireActivity())
+            )
+            vancedVersion.text = getString(
+                R.string.chosen_version,
+                defPrefs.vancedVersion?.formatVersion(requireActivity())
+            )
             vancedLang.text = getString(R.string.chosen_lang, showLang)
-            openThemeSelector.setOnClickListener {
+            openThemeSelectorLayout.setOnClickListener {
                 dismiss()
                 showDialog(VancedThemeSelectorDialog())
             }
-            openVersionSelector.setOnClickListener {
+            openVersionSelectorLayout.setOnClickListener {
                 dismiss()
                 showDialog(
                     AppVersionSelectorDialog.newInstance(
@@ -63,15 +64,13 @@ class VancedPreferencesDialog : BindingBottomSheetDialogFragment<DialogVancedPre
                     )
                 )
             }
-            openLanguageSelector.setOnClickListener {
+            openLanguageSelectorLayout.setOnClickListener {
                 dismiss()
                 showDialog(VancedLanguageSelectionDialog())
             }
             vancedInstall.setOnClickListener {
                 if (showLang.isEmpty()) {
-                    installPrefs.edit {
-                        putString("lang", "en")
-                    }
+                    installPrefs.lang = "en"
                 }
                 dismiss()
                 showDialog(

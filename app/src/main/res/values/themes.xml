@@ -50,7 +50,7 @@
         <item name="colorPrimaryVariant">#2C7EB9</item>
         <item name="colorSecondary">#3E78AF</item>
         <item name="colorSecondaryVariant">#803E78AF</item>
-        <item name="colorSurface">#121212</item>
+        <item name="colorSurface">#111111</item>
         <item name="colorSurfaceVariant">#111111</item>
         <item name="colorSurfaceSurfaceVariant">?colorSurface</item>
         <item name="colorOnPrimary">#F9F9F9</item>
@@ -67,7 +67,7 @@
         <item name="toolbarIconColor">?colorOnPrimary</item>
         <item name="DialogBG">#111111</item>
         <item name="colorLinkImage">#FFFFFF</item>
-        <item name="colorLinkBG">#161616</item>
+        <item name="colorLinkBG">#191919</item>
         <item name="colorSettingsTitle">#ffffff</item>
         <item name="colorSecondaryText">#B3FFFFFF</item>
         <item name="colorWelcomeHeaderSubtitle">#99FFFFFF</item>

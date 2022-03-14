@@ -9,41 +9,36 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.ViewGroup
-import androidx.core.content.edit
-import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.viewModels
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.crowdin.platform.util.inflateWithCrowdin
-import com.github.florent37.viewtooltip.ViewTooltip
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
+import com.vanced.manager.BuildConfig.VERSION_CODE
 import com.vanced.manager.R
-import com.vanced.manager.adapter.AppListAdapter
+import com.vanced.manager.adapter.ExpandableAppListAdapter
 import com.vanced.manager.adapter.LinkAdapter
 import com.vanced.manager.adapter.SponsorAdapter
 import com.vanced.manager.core.ui.base.BindingFragment
+import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.FragmentHomeBinding
+import com.vanced.manager.ui.dialogs.AppInfoDialog
 import com.vanced.manager.ui.dialogs.DialogContainer.installAlertBuilder
 import com.vanced.manager.ui.viewmodels.HomeViewModel
-import com.vanced.manager.ui.viewmodels.HomeViewModelFactory
-import com.vanced.manager.utils.InternetTools.isFetching
+import com.vanced.manager.utils.isFetching
+import com.vanced.manager.utils.manager
 
-open class HomeFragment : BindingFragment<FragmentHomeBinding>() {
+class HomeFragment : BindingFragment<FragmentHomeBinding>() {
 
     companion object {
         const val INSTALL_FAILED = "INSTALL_FAILED"
         const val REFRESH_HOME = "REFRESH_HOME"
     }
 
-    private val viewModel: HomeViewModel by viewModels {
-        HomeViewModelFactory(requireActivity())
-    }
+    private val viewModel: HomeViewModel by viewModels()
 
     private val localBroadcastManager by lazy { LocalBroadcastManager.getInstance(requireActivity()) }
-    private val prefs by lazy { PreferenceManager.getDefaultSharedPreferences(requireActivity()) }
-    private lateinit var tooltip: ViewTooltip
 
     override fun binding(
         inflater: LayoutInflater,
@@ -58,28 +53,27 @@ open class HomeFragment : BindingFragment<FragmentHomeBinding>() {
     private fun bindData() {
         requireActivity().title = getString(R.string.title_home)
         setHasOptionsMenu(true)
-        with (binding) {
+        with(binding) {
             homeRefresh.setOnRefreshListener { viewModel.fetchData() }
             isFetching.observe(viewLifecycleOwner) { homeRefresh.isRefreshing = it }
-            tooltip = ViewTooltip
-                .on(recyclerAppList)
-                .position(ViewTooltip.Position.TOP)
-                .autoHide(false, 0)
-                .color(ResourcesCompat.getColor(requireActivity().resources, R.color.Twitter, null))
-                .withShadow(false)
-                .corner(25)
-                .onHide {
-                    prefs.edit { putBoolean("show_changelog_tooltip", false) }
-                }
-                .text(requireActivity().getString(R.string.app_changelog_tooltip))
 
-            if (prefs.getBoolean("show_changelog_tooltip", true)) {
-                tooltip.show()
-            }
+            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+            if (prefs.contains("LastVersionCode")) {
+                if (prefs.getInt("LastVersionCode", -1) < VERSION_CODE) {
+                    showDialog(
+                        AppInfoDialog.newInstance(
+                            appName = getString(R.string.app_name),
+                            appIcon = R.mipmap.ic_launcher,
+                            changelog = manager.value?.string("changelog")
+                        )
+                    )
+                    prefs.edit().putInt("LastVersionCode", VERSION_CODE).apply()
+                }
+            } else prefs.edit().putInt("LastVersionCode", VERSION_CODE).apply()
 
             recyclerAppList.apply {
                 layoutManager = LinearLayoutManager(requireActivity())
-                adapter = AppListAdapter(requireActivity(), viewModel, viewLifecycleOwner, tooltip)
+                adapter = ExpandableAppListAdapter(requireActivity(), viewModel /*, tooltip*/)
                 setHasFixedSize(true)
             }
 
@@ -102,14 +96,12 @@ open class HomeFragment : BindingFragment<FragmentHomeBinding>() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflateWithCrowdin(R.menu.toolbar_menu, menu, resources)
-        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.toolbar_menu, menu)
     }
 
     override fun onPause() {
         super.onPause()
         localBroadcastManager.unregisterReceiver(broadcastReceiver)
-        tooltip.close()
     }
 
     override fun onResume() {
@@ -120,7 +112,11 @@ open class HomeFragment : BindingFragment<FragmentHomeBinding>() {
     private val broadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                INSTALL_FAILED -> installAlertBuilder(intent.getStringExtra("errorMsg").toString(), intent.getStringExtra("fullErrorMsg"), requireActivity())
+                INSTALL_FAILED -> installAlertBuilder(
+                    intent.getStringExtra("errorMsg").toString(),
+                    intent.getStringExtra("fullErrorMsg"),
+                    requireActivity()
+                )
                 REFRESH_HOME -> viewModel.fetchData()
             }
         }

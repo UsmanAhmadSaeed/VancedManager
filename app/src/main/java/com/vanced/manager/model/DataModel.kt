@@ -3,96 +3,79 @@ package com.vanced.manager.model
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.annotation.DrawableRes
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.*
 import com.beust.klaxon.JsonObject
 import com.vanced.manager.R
-import com.vanced.manager.utils.Extensions.lifecycleOwner
+import com.vanced.manager.core.CombinedLiveData
 import com.vanced.manager.utils.PackageHelper.isPackageInstalled
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 open class DataModel(
-    private val jsonObject: LiveData<JsonObject?>,
-    private val context: Context,
+    jsonObject: LiveData<JsonObject?>,
+    context: Context,
     val appPkg: String,
     val appName: String,
-    val appIcon: Drawable?,
+    val appDescription: String,
+    @DrawableRes val appIcon: Int
 ) {
 
-    private val versionCode = MutableLiveData<Int>()
-    private val installedVersionCode = MutableLiveData<Int>()
+    val isAppInstalled = Transformations.map(jsonObject) { isAppInstalled(appPkg) }
 
-    val isAppInstalled = MutableLiveData<Boolean>()
-    val versionName = MutableLiveData<String>()
-    val installedVersionName = MutableLiveData<String>()
-    val buttonTxt = MutableLiveData<String>()
-    val changelog = MutableLiveData<String>()
+    private val versionCode = Transformations.map(jsonObject) { jobj ->
+        jobj?.int("versionCode") ?: 0
+    }
+    private val installedVersionCode = Transformations.map(isAppInstalled) {
+        getPkgVersionCode(appPkg, it)
+    }
+    private val unavailable = context.getString(R.string.unavailable)
+    private val pm = context.packageManager
 
-    private fun fetch() = CoroutineScope(Dispatchers.IO).launch {
-        val jobj = jsonObject.value
-        isAppInstalled.postValue(isPackageInstalled(appPkg, context.packageManager))
-        versionCode.postValue(jobj?.int("versionCode") ?: 0)
-        versionName.postValue(jobj?.string("version")?.removeSuffix("-vanced") ?: context.getString(
-                R.string.unavailable
-            ))
-        changelog.postValue(jobj?.string("changelog") ?: context.getString(R.string.unavailable))
+    val versionName = Transformations.map(jsonObject) { jobj ->
+        jobj?.string("version") ?: unavailable
+    }
+    val changelog = Transformations.map(jsonObject) { jobj ->
+        jobj?.string("changelog") ?: unavailable
+    }
+    val installedVersionName = Transformations.map(isAppInstalled) {
+        getPkgVersionName(appPkg, it)
+    }
+    val buttonTag = CombinedLiveData(versionCode, installedVersionCode) { versionCode, installedVersionCode ->
+        compareInt(installedVersionCode, versionCode)
     }
 
-    init {
-        fetch()
-        with(context.lifecycleOwner()) {
-            this?.let {
-                jsonObject.observe(it) {
-                    fetch()
-                }
-            }
-            this?.let {
-                isAppInstalled.observe(it) {
-                    installedVersionCode.postValue(getPkgVersionCode(appPkg))
-                    installedVersionName.postValue(getPkgVersionName(appPkg))
-                }
-            }
-            this?.let {
-                versionCode.observe(it) { versionCode ->
-                    installedVersionCode.observe(it) { installedVersionCode ->
-                        buttonTxt.value = compareInt(installedVersionCode, versionCode)
-                    }
-                }
-            }
-        }
-    }
+    open fun isAppInstalled(pkg: String): Boolean = isPackageInstalled(pkg, pm)
 
-    private fun getPkgVersionName(pkg: String): String {
-        val pm = context.packageManager
-        return if (isAppInstalled.value == true) {
-            pm.getPackageInfo(pkg, 0).versionName.removeSuffix("-vanced")
+    private fun getPkgVersionName(pkg: String, isAppInstalled: Boolean): String {
+        return if (isAppInstalled) {
+            pm?.getPackageInfo(pkg, 0)?.versionName?.removeSuffix("-vanced") ?: unavailable
         } else {
-            context.getString(R.string.unavailable)
+            unavailable
         }
     }
 
     @Suppress("DEPRECATION")
-    private fun getPkgVersionCode(pkg: String): Int {
-        return if (isAppInstalled.value == true) {
+    private fun getPkgVersionCode(pkg: String, isAppInstalled: Boolean): Int {
+        return if (isAppInstalled) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                context.packageManager.getPackageInfo(pkg, 0).longVersionCode.and(0xFFFFFFFF)
-                    .toInt()
+                pm?.getPackageInfo(pkg, 0)?.longVersionCode?.and(0xFFFFFFFF)?.toInt() ?: 0
             else
-                context.packageManager.getPackageInfo(pkg, 0).versionCode
-        } else 0
+                pm?.getPackageInfo(pkg, 0)?.versionCode ?: 0
+
+        } else {
+            0
+        }
     }
 
-    private fun compareInt(int1: Int?, int2: Int?): String {
+    private fun compareInt(int1: Int?, int2: Int?): ButtonTag {
         if (int2 != null && int1 != null) {
             return when {
-                int1 == 0 -> context.getString(R.string.install)
-                int2 > int1 -> context.getString(R.string.update)
-                int2 == int1 || int1 > int2 -> context.getString(R.string.button_reinstall)
-                else -> context.getString(R.string.install)
+                int1 == 0 -> ButtonTag.INSTALL
+                int2 > int1 -> ButtonTag.UPDATE
+                int1 >= int2 -> ButtonTag.REINSTALL
+                else -> ButtonTag.INSTALL
             }
         }
-        return context.getString(R.string.install)
+        return ButtonTag.INSTALL
     }
 }

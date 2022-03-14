@@ -1,5 +1,6 @@
 package com.vanced.manager.ui.dialogs
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,8 +18,7 @@ import com.vanced.manager.core.downloader.MusicDownloader.downloadMusic
 import com.vanced.manager.core.downloader.VancedDownloader.downloadVanced
 import com.vanced.manager.core.ui.base.BindingDialogFragment
 import com.vanced.manager.databinding.DialogAppDownloadBinding
-import com.vanced.manager.utils.DownloadHelper.downloadProgress
-import com.vanced.manager.utils.Extensions.applyAccent
+import com.vanced.manager.utils.*
 
 class AppDownloadDialog : BindingDialogFragment<DialogAppDownloadBinding>() {
 
@@ -26,14 +26,17 @@ class AppDownloadDialog : BindingDialogFragment<DialogAppDownloadBinding>() {
 
         const val CLOSE_DIALOG = "close_dialog"
         private const val TAG_APP = "TAG_APP"
+        private const val TAG_VERSION = "TAG_VERSION"
         private const val TAG_INSTALLING = "TAG_INSTALLING"
 
         fun newInstance(
             app: String,
+            version: String? = null,
             installing: Boolean = false
         ): AppDownloadDialog = AppDownloadDialog().apply {
             arguments = Bundle().apply {
                 putString(TAG_APP, app)
+                putString(TAG_VERSION, version)
                 putBoolean(TAG_INSTALLING, installing)
             }
         }
@@ -70,38 +73,42 @@ class AppDownloadDialog : BindingDialogFragment<DialogAppDownloadBinding>() {
             appDownloadHeader.text = app
             if (arguments?.getBoolean(TAG_INSTALLING) == false) {
                 when (app) {
-                    getString(R.string.vanced) -> downloadVanced(requireContext())
-                    getString(R.string.music) -> downloadMusic(requireContext())
+                    getString(R.string.vanced) -> downloadVanced(
+                        requireContext(),
+                        arguments?.getString(TAG_VERSION)
+                    )
+                    getString(R.string.music) -> downloadMusic(
+                        requireContext(),
+                        arguments?.getString(TAG_VERSION)
+                    )
                     getString(R.string.microg) -> downloadMicrog(requireContext())
                 }
             }
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun DialogAppDownloadBinding.bindDownloadProgress() {
-        with(downloadProgress) {
-            observe(viewLifecycleOwner) { progressModel ->
-                progressModel.downloadProgress.observe(viewLifecycleOwner) {
-                    appDownloadProgressbar.progress = it
+        downloadProgress.observe(viewLifecycleOwner) {
+            appDownloadProgressbar.progress = it
+            appDownloadProgress.text = "$it%"
+        }
+        installing.observe(viewLifecycleOwner) { installing ->
+            appDownloadProgressbarContainer.isVisible = !installing
+            appInstallProgressbar.isVisible = installing
+            appDownloadFile.isVisible = !installing
+            appDownloadCancel.isEnabled = !installing
+            appDownloadCancel.setOnClickListener {
+                if (installing) {
+                    return@setOnClickListener
                 }
-                progressModel.installing.observe(viewLifecycleOwner) { installing ->
-                    appDownloadProgressbar.isVisible = !installing
-                    appInstallProgressbar.isVisible = installing
-                    appDownloadFile.isVisible = !installing
-                    appDownloadCancel.isEnabled = !installing
-                    appDownloadCancel.setOnClickListener {
-                        if (installing) {
-                            return@setOnClickListener
-                        }
-                        progressModel.currentDownload?.cancel()
-                        progressModel.downloadProgress.value = 0
-                        dismiss()
-                    }
-                }
-                progressModel.downloadingFile.observe(viewLifecycleOwner) {
-                    appDownloadFile.text = it
-                }
+                currentDownload?.cancel()
+                downloadProgress.value = 0
+                dismiss()
             }
+        }
+        downloadingFile.observe(viewLifecycleOwner) {
+            appDownloadFile.text = it
         }
     }
 

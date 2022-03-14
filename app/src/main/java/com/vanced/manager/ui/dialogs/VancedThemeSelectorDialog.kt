@@ -5,17 +5,18 @@ import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.content.edit
 import com.vanced.manager.R
 import com.vanced.manager.core.ui.base.BindingBottomSheetDialogFragment
 import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.DialogBottomRadioButtonBinding
 import com.vanced.manager.ui.core.ThemedMaterialRadioButton
-import com.vanced.manager.utils.Extensions.convertToAppTheme
-import com.vanced.manager.utils.Extensions.getCheckedButtonTag
-import com.vanced.manager.utils.InternetTools.vanced
+import com.vanced.manager.utils.checkedButtonTag
+import com.vanced.manager.utils.convertToAppTheme
+import com.vanced.manager.utils.theme
+import com.vanced.manager.utils.vanced
 
-class VancedThemeSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomRadioButtonBinding>() {
+class VancedThemeSelectorDialog :
+    BindingBottomSheetDialogFragment<DialogBottomRadioButtonBinding>() {
 
     companion object {
 
@@ -24,7 +25,12 @@ class VancedThemeSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomR
         }
     }
 
-    private val prefs by lazy { requireActivity().getSharedPreferences("installPrefs", Context.MODE_PRIVATE) }
+    private val prefs by lazy {
+        requireActivity().getSharedPreferences(
+            "installPrefs",
+            Context.MODE_PRIVATE
+        )
+    }
 
     override fun binding(
         inflater: LayoutInflater,
@@ -46,21 +52,21 @@ class VancedThemeSelectorDialog : BindingBottomSheetDialogFragment<DialogBottomR
                 )
             }
             dialogTitle.text = requireActivity().getString(R.string.theme)
-            val tag = root.findViewWithTag<ThemedMaterialRadioButton>(prefs.getString("theme", "dark"))
+            val tag = root.findViewWithTag<ThemedMaterialRadioButton>(prefs.theme)
             if (tag != null) {
                 tag.isChecked = true
             }
             dialogSave.setOnClickListener {
-                val checkedTag = binding.dialogRadiogroup.getCheckedButtonTag()
+                val checkedTag = binding.dialogRadiogroup.checkedButtonTag
                 if (checkedTag != null) {
-                    prefs.edit { putString("theme", checkedTag) }
+                    prefs.theme = checkedTag
                 }
                 dismiss()
             }
         }
     }
 
-    private fun loadButtons() = vanced.value?.array<String>("themes")?.value?.map {theme ->
+    private fun loadButtons() = vanced.value?.array<String>("themes")?.value?.map { theme ->
         ThemedMaterialRadioButton(requireActivity()).apply {
             text = theme.convertToAppTheme(requireActivity())
             tag = theme

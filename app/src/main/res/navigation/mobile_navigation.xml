@@ -28,12 +28,21 @@
             app:popEnterAnim="@animator/fragment_enter_pop"
             app:popExitAnim="@animator/fragment_exit_pop"  />
 
+        <action
+            android:id="@+id/toLogFragment"
+            app:destination="@id/log_fragment"
+            app:enterAnim="@animator/fragment_enter"
+            app:exitAnim="@animator/fragment_exit"
+            app:popEnterAnim="@animator/fragment_enter_pop"
+            app:popExitAnim="@animator/fragment_exit_pop"  />
+
     </fragment>
 
     <fragment
         android:id="@+id/settings_fragment"
         android:name="com.vanced.manager.ui.fragments.SettingsFragment"
-        android:label="@string/title_settings">
+        android:label="@string/title_settings"
+        tools:layout="@layout/fragment_settings">
 
         <action
             android:id="@+id/toDevSettingsFragment"
@@ -58,8 +67,17 @@
     </fragment>
 
     <fragment
+        android:id="@+id/log_fragment"
+        android:name="com.vanced.manager.ui.fragments.LogFragment"
+        android:label="@string/title_logs"
+        tools:layout="@layout/fragment_log">
+
+    </fragment>
+
+    <fragment
         android:id="@+id/dev_settings_fragment"
         android:name="com.vanced.manager.ui.fragments.DevSettingsFragment"
-        android:label="Dev Settings" />
+        android:label="Dev Settings"
+        tools:layout="@layout/fragment_dev_settings"/>
 
 </navigation>

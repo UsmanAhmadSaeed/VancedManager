@@ -8,9 +8,12 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.vanced.manager.R
 import com.vanced.manager.databinding.ViewNotificationSettingBinding
 import com.vanced.manager.model.NotifModel
+import com.vanced.manager.utils.defPrefs
 
 class GetNotifAdapter(private val context: Context) :
     RecyclerView.Adapter<GetNotifAdapter.GetNotifViewHolder>() {
+
+    private val prefs = context.defPrefs
 
     private val vanced = NotifModel(
         "Vanced-Update",
@@ -33,15 +36,24 @@ class GetNotifAdapter(private val context: Context) :
 
     private val apps = arrayOf(vanced, music, microg)
 
-    inner class GetNotifViewHolder(val binding: ViewNotificationSettingBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class GetNotifViewHolder(val binding: ViewNotificationSettingBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         val switch = binding.notifSwitch
-
         fun bind(position: Int) {
+            val app = apps[position]
             with(binding.notifSwitch) {
-                setKey(apps[position].key)
-                setSummary(apps[position].switchSummary)
-                setTitle(apps[position].switchTitle)
+                setKey(app.key)
+                setSummary(app.switchSummary)
+                setTitle(app.switchTitle)
                 setDefaultValue(true)
+                with(prefs) {
+                    setChecked(
+                        getBoolean(
+                            "enable_" + app.key.substringBefore("_"),
+                            true
+                        ) && getBoolean(app.key, true)
+                    )
+                }
             }
         }
     }

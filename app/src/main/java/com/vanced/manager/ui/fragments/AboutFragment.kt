@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.edit
 import androidx.fragment.app.viewModels
 import androidx.preference.PreferenceManager
@@ -16,7 +15,7 @@ import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.FragmentAboutBinding
 import com.vanced.manager.ui.dialogs.AppInfoDialog
 import com.vanced.manager.ui.viewmodels.AboutViewModel
-import com.vanced.manager.utils.InternetTools.manager
+import com.vanced.manager.utils.manager
 
 class AboutFragment : BindingFragment<FragmentAboutBinding>() {
 
@@ -37,11 +36,11 @@ class AboutFragment : BindingFragment<FragmentAboutBinding>() {
     @SuppressLint("ClickableViewAccessibility")
     private fun dataBind() {
         requireActivity().title = getString(R.string.title_about)
-        binding.aboutHeader.root.setOnClickListener {
+        binding.aboutVersionCard.setOnClickListener {
             showDialog(
                 AppInfoDialog.newInstance(
                     appName = getString(R.string.app_name),
-                    appIcon = AppCompatResources.getDrawable(requireActivity(), R.mipmap.ic_launcher),
+                    appIcon = R.mipmap.ic_launcher,
                     changelog = manager.value?.string("changelog")
                 )
             )
@@ -61,17 +60,25 @@ class AboutFragment : BindingFragment<FragmentAboutBinding>() {
                     val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
                     val devSettings = prefs.getBoolean("devSettings", false)
                     if (!devSettings) {
-                        Toast.makeText(requireContext(), "Dev options unlocked!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Dev options unlocked!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         prefs.edit { putBoolean("devSettings", true) }
                     } else
-                        Toast.makeText(requireContext(), "Dev options already unlocked", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Dev options already unlocked",
+                            Toast.LENGTH_SHORT
+                        ).show()
 
                 }
                 return@setOnTouchListener true
             }
             false
         }
-        binding.aboutSources.aboutGithubButton.setOnClickListener { viewModel.openUrl("https://github.com/YTVanced/VancedInstaller") }
-        binding.aboutSources.aboutLicenseButton.setOnClickListener { viewModel.openUrl("https://raw.githubusercontent.com/YTVanced/VancedInstaller/dev/LICENSE") }
+        binding.aboutGithubButton.setOnClickListener { viewModel.openUrl("https://github.com/YTVanced/VancedInstaller") }
+        binding.aboutLicenseButton.setOnClickListener { viewModel.openUrl("https://raw.githubusercontent.com/YTVanced/VancedInstaller/dev/LICENSE") }
     }
 }

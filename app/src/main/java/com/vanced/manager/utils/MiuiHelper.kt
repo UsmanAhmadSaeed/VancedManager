@@ -1,25 +1,12 @@
 package com.vanced.manager.utils
 
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
+import android.content.Context
+import android.provider.Settings
 
-object MiuiHelper {
+private const val MIUI_OPTIMIZATION = "miui_optimization"
 
-    private const val MIUI_PROP_NAME = "ro.miui.ui.version.name"
-
-    fun isMiui(): Boolean = !getSystemProps(MIUI_PROP_NAME).isNullOrEmpty()
-
-    private fun getSystemProps(propname: String): String? {
-        var input: BufferedReader? = null
-        return try {
-            val process = Runtime.getRuntime().exec("getprop $propname")
-            input = BufferedReader(InputStreamReader(process.inputStream), 1024)
-            input.readLine()
-        } catch (e: IOException) {
-            null
-        } finally {
-            input?.close()
-        }
-    }
-}
+val Context.isMiuiOptimizationsEnabled: Boolean
+    get() = Settings.Secure.getString(
+        contentResolver,
+        MIUI_OPTIMIZATION
+    ) == "1"

@@ -2,32 +2,24 @@ package com.vanced.manager.core.downloader
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.vanced.manager.R
+import com.vanced.manager.utils.*
+import com.vanced.manager.utils.AppUtils.log
 import com.vanced.manager.utils.AppUtils.validateTheme
 import com.vanced.manager.utils.AppUtils.vancedRootPkg
-import com.vanced.manager.utils.DeviceUtils.getArch
-import com.vanced.manager.utils.DownloadHelper.downloadProgress
-import com.vanced.manager.utils.DownloadHelper.fuelDownload
-import com.vanced.manager.utils.Extensions.getInstallUrl
-import com.vanced.manager.utils.Extensions.getLatestAppVersion
-import com.vanced.manager.utils.InternetTools.getFileNameFromUrl
-import com.vanced.manager.utils.InternetTools.vanced
-import com.vanced.manager.utils.InternetTools.vancedVersions
-import com.vanced.manager.utils.LanguageHelper.getDefaultVancedLanguages
+import com.vanced.manager.utils.DownloadHelper.download
 import com.vanced.manager.utils.PackageHelper.downloadStockCheck
-import com.vanced.manager.utils.PackageHelper.installVanced
+import com.vanced.manager.utils.PackageHelper.installSplitApkFiles
 import com.vanced.manager.utils.PackageHelper.installVancedRoot
 import java.io.File
 
 object VancedDownloader {
-    
+
     private lateinit var prefs: SharedPreferences
     private lateinit var defPrefs: SharedPreferences
     private lateinit var arch: String
-    private var installUrl: String? = null
     private var variant: String? = null
     private var theme: String? = null
     private var lang = mutableListOf<String>()
@@ -44,86 +36,107 @@ object VancedDownloader {
     private var downloadPath: String? = null
     private var folderName: String? = null
 
-    fun downloadVanced(context: Context) {
-        defPrefs = getDefaultSharedPreferences(context)
-        prefs = context.getSharedPreferences("installPrefs", Context.MODE_PRIVATE)
-        variant = defPrefs.getString("vanced_variant", "nonroot")
+    fun downloadVanced(context: Context, version: String?) {
+        defPrefs = context.defPrefs
+        prefs = context.installPrefs
+        variant = defPrefs.managerVariant
         folderName = "vanced/$variant"
         downloadPath = context.getExternalFilesDir(folderName)?.path
         File(downloadPath.toString()).deleteRecursively()
-        installUrl = defPrefs.getInstallUrl()
-        prefs.getString("lang", getDefaultVancedLanguages())?.let {
+        prefs.lang?.let {
             lang = it.split(", ").toMutableList()
         }
-        theme = prefs.getString("theme", "dark")
-        vancedVersion = defPrefs.getString("vanced_version", "latest")?.getLatestAppVersion(vancedVersions.value?.value ?: listOf(""))
-        themePath = "$installUrl/apks/v$vancedVersion/$variant/Theme"
+        theme = prefs.theme
+        vancedVersion = version ?: defPrefs.vancedVersion?.getLatestAppVersion(
+            vancedVersions.value?.value ?: listOf("")
+        )
+        themePath = "$baseInstallUrl/apks/v$vancedVersion/$variant/Theme"
         hashUrl = "apks/v$vancedVersion/$variant/Theme/hash.json"
-        //newInstaller = defPrefs.getBoolean("new_installer", false)
         arch = getArch()
         count = 0
 
         vancedVersionCode = vanced.value?.int("versionCode") ?: 0
-        downloadSplits(context)
+        try {
+            downloadSplits(context)
+        } catch (e: Exception) {
+            log("VMDownloader", e.stackTraceToString())
+            downloadingFile.postValue(context.getString(R.string.error_downloading, "Vanced"))
+        }
+
     }
 
     private fun downloadSplits(context: Context, type: String = "theme") {
         val url = when (type) {
             "theme" -> "$themePath/$theme.apk"
-            "arch" -> "$installUrl/apks/v$vancedVersion/$variant/Arch/split_config.$arch.apk"
+            "arch" -> "$baseInstallUrl/apks/v$vancedVersion/$variant/Arch/split_config.$arch.apk"
             "stock" -> "$themePath/stock.apk"
-            "dpi" ->  "$themePath/dpi.apk"
-            "lang" -> "$installUrl/apks/v$vancedVersion/$variant/Language/split_config.${lang[count]}.apk"
+            "dpi" -> "$themePath/dpi.apk"
+            "lang" -> "$baseInstallUrl/apks/v$vancedVersion/$variant/Language/split_config.${lang[count]}.apk"
             else -> throw NotImplementedError("This type of APK is NOT valid. What the hell did you even do?")
         }
 
-        fuelDownload(url, folderName!!, getFileNameFromUrl(url), context, onDownloadComplete = {
-            when (type) {
-                "theme" ->
-                    if (variant == "root") {
-                        if (validateTheme(downloadPath!!, theme!!, hashUrl, context)) {
-                            if (downloadStockCheck(vancedRootPkg, vancedVersionCode, context))
-                                downloadSplits(context, "arch")
-                            else
-                                startVancedInstall(context)
+        download(
+            url,
+            "$baseInstallUrl/",
+            folderName!!,
+            getFileNameFromUrl(url),
+            context,
+            onDownloadComplete = {
+                when (type) {
+                    "theme" ->
+                        if (variant == "root") {
+                            if (validateTheme(downloadPath!!, theme!!, hashUrl, context)) {
+                                if (downloadStockCheck(vancedRootPkg, vancedVersionCode, context))
+                                    downloadSplits(context, "arch")
+                                else
+                                    startVancedInstall(context)
+                            } else
+                                downloadSplits(context, "theme")
                         } else
-                            downloadSplits(context, "theme")
-                    } else
-                        downloadSplits(context, "arch")
-                "arch" -> if (variant == "root") downloadSplits(context, "stock") else downloadSplits(context, "lang")
-                "stock" -> downloadSplits(context, "dpi")
-                "dpi" -> downloadSplits(context, "lang")
-                "lang" -> {
-                    count++
-                    succesfulLangCount++
-                    if (count < lang.size)
-                        downloadSplits(context, "lang")
-                    else
-                        startVancedInstall(context)
-                }
-
-            }
-        }, onError = {
-            if (type == "lang") {
-                count++
-                when {
-                    count < lang.size -> downloadSplits(context, "lang")
-                    succesfulLangCount == 0 -> {
-                        lang.add("en")
-                        downloadSplits(context, "lang")
+                            downloadSplits(context, "arch")
+                    "arch" -> if (variant == "root") downloadSplits(
+                        context,
+                        "stock"
+                    ) else downloadSplits(context, "lang")
+                    "stock" -> downloadSplits(context, "dpi")
+                    "dpi" -> downloadSplits(context, "lang")
+                    "lang" -> {
+                        count++
+                        succesfulLangCount++
+                        if (count < lang.size)
+                            downloadSplits(context, "lang")
+                        else
+                            startVancedInstall(context)
                     }
-                    else -> startVancedInstall(context)
-                }
 
-            } else {
-                downloadProgress.value?.downloadingFile?.postValue(context.getString(R.string.error_downloading, getFileNameFromUrl(url)))
-            }
-        })
+                }
+            },
+            onError = {
+                if (type == "lang") {
+                    count++
+                    when {
+                        count < lang.size -> downloadSplits(context, "lang")
+                        succesfulLangCount == 0 -> {
+                            lang.add("en")
+                            downloadSplits(context, "lang")
+                        }
+                        else -> startVancedInstall(context)
+                    }
+
+                } else {
+                    downloadingFile.postValue(
+                        context.getString(
+                            R.string.error_downloading,
+                            getFileNameFromUrl(url)
+                        )
+                    )
+                }
+            })
     }
 
     fun startVancedInstall(context: Context, variant: String? = this.variant) {
-        downloadProgress.value?.installing?.postValue(true)
-        downloadProgress.value?.postReset()
+        installing.postValue(true)
+        postReset()
         FirebaseAnalytics.getInstance(context).logEvent(FirebaseAnalytics.Event.SELECT_ITEM) {
             variant?.let { param("vanced_variant", it) }
             theme?.let { param("vanced_theme", it) }
@@ -131,6 +144,6 @@ object VancedDownloader {
         if (variant == "root")
             installVancedRoot(context)
         else
-            installVanced(context)
+            installSplitApkFiles(context, "vanced")
     }
 }

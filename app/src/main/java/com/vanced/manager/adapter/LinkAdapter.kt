@@ -57,13 +57,14 @@ class LinkAdapter(
 
     val links = arrayOf(instagram, youtube, github, website, telegram, twitter, discord, reddit)
 
-    inner class LinkViewHolder(private val binding: ViewSocialLinkBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class LinkViewHolder(private val binding: ViewSocialLinkBinding) :
+        RecyclerView.ViewHolder(binding.root) {
 
         val logo = binding.linkImage
 
         fun bind(position: Int) {
             binding.linkBg.setOnClickListener {
-                viewModel.openUrl(links[position].linkUrl)
+                viewModel.openUrl(context, links[position].linkUrl)
             }
         }
     }

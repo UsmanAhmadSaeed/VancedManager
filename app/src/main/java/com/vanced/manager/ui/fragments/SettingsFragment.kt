@@ -1,6 +1,5 @@
 package com.vanced.manager.ui.fragments
 
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -8,6 +7,7 @@ import android.view.MenuInflater
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.view.isVisible
+import androidx.fragment.app.FragmentActivity
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -19,10 +19,10 @@ import com.vanced.manager.core.ui.base.BindingFragment
 import com.vanced.manager.core.ui.ext.showDialog
 import com.vanced.manager.databinding.FragmentSettingsBinding
 import com.vanced.manager.ui.dialogs.*
-import com.vanced.manager.utils.Extensions.toHex
-import com.vanced.manager.utils.LanguageHelper.getLanguageFormat
-import com.vanced.manager.utils.ThemeHelper.accentColor
-import com.vanced.manager.utils.ThemeHelper.defAccentColor
+import com.vanced.manager.utils.accentColor
+import com.vanced.manager.utils.defAccentColor
+import com.vanced.manager.utils.getLanguageFormat
+import com.vanced.manager.utils.toHex
 import java.io.File
 
 class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
@@ -33,15 +33,9 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
     }
 
     private val prefs by lazy { getDefaultSharedPreferences(requireActivity()) }
-    private val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
-        when (key) {
-            "serviced_sleep_timer" -> {
-                binding.servicedTimer.setSummary(sharedPreferences.getInt(key, 1).toString())
-            }
-        }
-    }
 
     private lateinit var variant: String
+    private lateinit var parentActivity: FragmentActivity
 
     override fun binding(
         inflater: LayoutInflater,
@@ -51,13 +45,8 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
 
     override fun otherSetups() {
         setHasOptionsMenu(true)
-        prefs.registerOnSharedPreferenceChangeListener(listener)
+        parentActivity = requireActivity()
         bindData()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        prefs.unregisterOnSharedPreferenceChangeListener(listener)
     }
 
     private fun bindData() {
@@ -77,8 +66,8 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
 
     private fun FragmentSettingsBinding.bindRecycler() {
         notificationsRecycler.apply {
-            layoutManager = LinearLayoutManager(requireActivity())
-            adapter = GetNotifAdapter(requireActivity())
+            layoutManager = LinearLayoutManager(parentActivity)
+            adapter = GetNotifAdapter(parentActivity)
         }
     }
 
@@ -86,7 +75,7 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
         firebase.setOnCheckedListener { _, isChecked ->
             FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(isChecked)
             FirebasePerformance.getInstance().isPerformanceCollectionEnabled = isChecked
-            FirebaseAnalytics.getInstance(requireActivity()).setAnalyticsCollectionEnabled(isChecked)
+            FirebaseAnalytics.getInstance(parentActivity).setAnalyticsCollectionEnabled(isChecked)
         }
     }
 
@@ -100,7 +89,6 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
     private fun FragmentSettingsBinding.bindServiceDTimer() {
         servicedTimer.apply {
             if (variant == "root") this.isVisible = true
-            setSummary(prefs.getInt("serviced_sleep_timer", 1).toString())
             setOnClickListener { showDialog(ServiceDTimerDialog()) }
         }
     }
@@ -108,7 +96,13 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
     private fun FragmentSettingsBinding.bindClearFiles() {
         clearFiles.setOnClickListener {
             with(requireActivity()) {
-                listOf("vanced/nonroot", "vanced/root", "music/nonroot", "music/root", "microg").forEach { dir ->
+                listOf(
+                    "vanced/nonroot",
+                    "vanced/root",
+                    "music/nonroot",
+                    "music/root",
+                    "microg"
+                ).forEach { dir ->
                     File(getExternalFilesDir(dir)?.path.toString()).deleteRecursively()
                 }
                 Toast.makeText(this, getString(R.string.cleared_files), Toast.LENGTH_SHORT).show()
@@ -131,7 +125,7 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
     }
 
     private fun FragmentSettingsBinding.bindManagerAccentColor() {
-        managerAccentColor.apply{
+        managerAccentColor.apply {
             setSummary(prefs.getInt("manager_accent_color", defAccentColor).toHex())
             setOnClickListener { showDialog(ManagerAccentColorDialog()) }
             accentColor.observe(viewLifecycleOwner) {
@@ -143,14 +137,15 @@ class SettingsFragment : BindingFragment<FragmentSettingsBinding>() {
     private fun FragmentSettingsBinding.bindManagerLanguage() {
         val langPref = prefs.getString("manager_lang", "System Default")
         managerLanguage.apply {
-            setSummary(getLanguageFormat(requireActivity(), requireNotNull(langPref)))
+            setSummary(getLanguageFormat(parentActivity, requireNotNull(langPref)))
             setOnClickListener { showDialog(ManagerLanguageDialog()) }
         }
 
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        val devSettings = getDefaultSharedPreferences(requireActivity()).getBoolean("devSettings", false)
+        val devSettings =
+            getDefaultSharedPreferences(requireActivity()).getBoolean("devSettings", false)
         if (devSettings) {
             inflater.inflate(R.menu.dev_settings_menu, menu)
         }

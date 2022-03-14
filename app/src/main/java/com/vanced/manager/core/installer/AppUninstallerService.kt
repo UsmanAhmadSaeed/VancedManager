@@ -4,16 +4,16 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.IBinder
-import android.util.Log
+import com.vanced.manager.utils.AppUtils.log
 import com.vanced.manager.utils.AppUtils.sendRefresh
 
-class AppUninstallerService: Service() {
+class AppUninstallerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val pkgName = intent?.getStringExtra("pkg")
         when (intent?.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                Log.d(AppInstallerService.TAG, "Requesting user confirmation for uninstallation")
+                log(AppInstallerService.TAG, "Requesting user confirmation for uninstallation")
                 val confirmationIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                 confirmationIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 try {
@@ -24,11 +24,11 @@ class AppUninstallerService: Service() {
             //Delay broadcast until activity (and fragment) show up on the screen
             PackageInstaller.STATUS_SUCCESS -> {
                 sendRefresh(this)
-                Log.d("VMpm", "Successfully uninstalled $pkgName")
+                log("VMpm", "Successfully uninstalled $pkgName")
             }
             PackageInstaller.STATUS_FAILURE -> {
                 sendRefresh(this)
-                Log.d("VMpm", "Failed to uninstall $pkgName")
+                log("VMpm", "Failed to uninstall $pkgName")
             }
         }
         stopSelf()

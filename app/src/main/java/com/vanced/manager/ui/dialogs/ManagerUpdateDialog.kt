@@ -1,5 +1,6 @@
 package com.vanced.manager.ui.dialogs
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -16,9 +17,10 @@ import com.vanced.manager.R
 import com.vanced.manager.core.ui.base.BindingDialogFragment
 import com.vanced.manager.databinding.DialogManagerUpdateBinding
 import com.vanced.manager.utils.DownloadHelper.downloadManager
-import com.vanced.manager.utils.DownloadHelper.downloadProgress
-import com.vanced.manager.utils.Extensions.applyAccent
-import com.vanced.manager.utils.InternetTools.manager
+import com.vanced.manager.utils.applyAccent
+import com.vanced.manager.utils.currentDownload
+import com.vanced.manager.utils.downloadProgress
+import com.vanced.manager.utils.manager
 
 class ManagerUpdateDialog : BindingDialogFragment<DialogManagerUpdateBinding>() {
 
@@ -56,7 +58,8 @@ class ManagerUpdateDialog : BindingDialogFragment<DialogManagerUpdateBinding>() 
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         bindData()
         if (arguments?.getBoolean(TAG_FORCE_UPDATE) == true) {
-            binding.managerUpdatePatient.text = requireActivity().getString(R.string.please_be_patient)
+            binding.managerUpdatePatient.text =
+                requireActivity().getString(R.string.please_be_patient)
             downloadManager(requireActivity())
         } else {
             checkUpdates()
@@ -68,24 +71,20 @@ class ManagerUpdateDialog : BindingDialogFragment<DialogManagerUpdateBinding>() 
             isCancelable = false
             managerUpdateProgressbar.applyAccent()
             managerUpdateCancel.setOnClickListener {
-                with(downloadProgress.value) {
-                    this?.downloadProgress?.value = 0
-                    this?.currentDownload?.cancel()
-                }
+                downloadProgress.value = 0
+                currentDownload?.cancel()
                 dismiss()
             }
             bindDownloadProgress()
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun DialogManagerUpdateBinding.bindDownloadProgress() {
-        with(downloadProgress) {
-            observe(viewLifecycleOwner) { progressModel ->
-                progressModel.downloadProgress.observe(viewLifecycleOwner) {
-                    managerUpdateProgressbar.progress = it
-                    managerUpdateProgressbar.isVisible = it != 0
-                }
-            }
+        downloadProgress.observe(viewLifecycleOwner) {
+            managerUpdateProgressbar.progress = it
+            managerUpdateProgressbarContainer.isVisible = it != 0
+            managerUpdateProgress.text = "$it%"
         }
     }
 
@@ -94,12 +93,19 @@ class ManagerUpdateDialog : BindingDialogFragment<DialogManagerUpdateBinding>() 
         registerReceiver()
     }
 
+    override fun onPause() {
+        super.onPause()
+        localBroadcastManager.unregisterReceiver(broadcastReceiver)
+    }
+
     private fun checkUpdates() {
         if (manager.value?.int("versionCode") ?: 0 > VERSION_CODE) {
-            binding.managerUpdatePatient.text = requireActivity().getString(R.string.please_be_patient)
+            binding.managerUpdatePatient.text =
+                requireActivity().getString(R.string.please_be_patient)
             downloadManager(requireActivity())
         } else {
-            binding.managerUpdatePatient.text = requireActivity().getString(R.string.update_not_found)
+            binding.managerUpdatePatient.text =
+                requireActivity().getString(R.string.update_not_found)
         }
     }
 
